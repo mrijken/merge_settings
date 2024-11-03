@@ -1,0 +1,65 @@
+{
+  "name": "merge-settings",
+  "displayName": "Merge Settings",
+  "description": "Merge settings from several sources into your workspace settings",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "merge-settings.sync",
+        "title": "Merge Settings"
+      }
+    ],
+    "configuration": {
+      "title": "Merge Settings ",
+      "properties": {
+        "mergeSettings.useWorkspaceFolders": {
+          "type": "boolean",
+          "default": true,
+          "description": "Get default settings from all workspace folders"
+        },
+        "mergeSettings.workspaceFolderSettingsFile": {
+          "type": "string",
+          "default": ".vscode/settings.default.json",
+          "description": "The file to load the settings from in your workspace folders if `useWorkspaceFolders` is enabled"
+        },
+        "mergeSettings.sourceSettingsFiles": {
+          "type": "string",
+          "default": "",
+          "editPresentation": "multilineText",
+          "description": "A list of files to load default settings from. A file can be a path on the local file system, or a URL."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.3",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1"
+  },
+  "dependencies": {
+    "jsonc-parser": "3.3.1"
+  }
+}
