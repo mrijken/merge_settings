@@ -12,7 +12,7 @@ const exists = promisify(fs.exists);
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
 
-const COMMAND_NAME = "MergeSettings.sync";
+const COMMAND_NAME = "merge-settings.sync";
 
 async function mergeSettings(sourceSettingsContent: string, destinationFile: string) {
 	let log = vscode.window.createOutputChannel("MergeSettings");
@@ -54,12 +54,12 @@ async function mergeSettings(sourceSettingsContent: string, destinationFile: str
 
 	// merge settings
 	const isWorkspaceFile = destinationFile.endsWith(".code-workspace");
-	const mergedSettings = Object.assign(
+	let mergedSettings;
+	mergedSettings = Object.assign(
 		{},
-		isWorkspaceFile ? destinationSettings.settings : destinationSettings,
-		sourceSettings
+		destinationSettings,
+		isWorkspaceFile ? { settings: sourceSettings } : sourceSettings,
 	);
-
 	await writeFile(
 		destinationFile,
 		JSON.stringify(mergedSettings, null, 2),
@@ -130,11 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 		}
 
-		if (areSettingsSynced) {
-			vscode.window.showInformationMessage("Workspace Settings Synchronized");
-		} else {
-			vscode.window.showInformationMessage("No sources found, so settings are merged");
-		}
+		vscode.window.showInformationMessage("Workspace Settings Synchronized");
 	});
 
 	context.subscriptions.push(disposable);
@@ -146,5 +142,3 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.executeCommand(COMMAND_NAME);
 	}
 }
-
-// this method is called when your extension is deactivated
