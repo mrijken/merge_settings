@@ -30,6 +30,10 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 0.1.3
+
+Fix merge issue in code-workspace file
+
 ### 0.1.2
 
 Fix writing workspace file

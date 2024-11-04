@@ -55,11 +55,21 @@ async function mergeSettings(sourceSettingsContent: string, destinationFile: str
 	// merge settings
 	const isWorkspaceFile = destinationFile.endsWith(".code-workspace");
 	let mergedSettings;
-	mergedSettings = Object.assign(
-		{},
-		destinationSettings,
-		isWorkspaceFile ? { settings: sourceSettings } : sourceSettings,
-	);
+	if (isWorkspaceFile) {
+		mergedSettings = Object.assign(
+			{},
+			destinationSettings,
+			isWorkspaceFile ? { settings: sourceSettings } : sourceSettings,
+		);
+
+	} else {
+		mergedSettings = Object.assign(
+			{},
+			destinationSettings,
+			sourceSettings,
+		);
+
+	}
 	await writeFile(
 		destinationFile,
 		JSON.stringify(mergedSettings, null, 2),

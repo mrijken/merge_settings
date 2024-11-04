@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.1.3]
+
+- Fix merge issue in code-workspace file
+
 ## [0.1.2]
 
 - Fix writing workspace file
