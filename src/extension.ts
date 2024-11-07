@@ -14,68 +14,101 @@ const writeFile = promisify(fs.writeFile);
 
 const COMMAND_NAME = "merge-settings.sync";
 
-async function mergeSettings(sourceSettingsContent: string, destinationFile: string) {
+interface SettingsObject {
+	[key: string]: any
+}
+
+async function mergeSettings(sourceSettings: SettingsObject, destinationFile: string) {
 	let log = vscode.window.createOutputChannel("MergeSettings");
 
-	// get source settings
-	const sourceSettingsErrors: ParseError[] = [];
-	const sourceSettings = parse(
-		sourceSettingsContent,
-		sourceSettingsErrors,
-		{
-			allowTrailingComma: true,
-		}
-	);
-	if (sourceSettingsErrors.length > 0) {
-		log.appendLine("Failed to parse source settings. Please make sure it contains correct JSON content.");
-		throw new Error(
-			"Failed to parse source settings. Please make sure it contains correct JSON content."
-		);
-	}
+	let destinationSettings: SettingsObject = await readJson(destinationFile);
 
-	// get destination settings
-	const destinationSettingsContent = await readFile(destinationFile, {
-		encoding: "utf8",
-	});
-	const destinationSettingsErrors: ParseError[] = [];
-	let destinationSettings = parse(
-		destinationSettingsContent,
-		destinationSettingsErrors,
-		{
-			allowTrailingComma: true,
-		}
-	);
-	if (destinationSettingsErrors.length > 0) {
-		log.appendLine("Failed to parse destination settings. Please make sure it contains correct JSON content.");
-		throw new Error(
-			"Failed to parse settings.json. Please make sure it contains correct JSON content."
-		);
-	}
-
-	// merge settings
 	const isWorkspaceFile = destinationFile.endsWith(".code-workspace");
-	let mergedSettings;
+
 	if (isWorkspaceFile) {
-		mergedSettings = Object.assign(
+		destinationSettings.settings = Object.assign(
 			{},
-			destinationSettings,
-			isWorkspaceFile ? { settings: sourceSettings } : sourceSettings,
+			destinationSettings.settings,
+			sourceSettings,
 		);
 
 	} else {
-		mergedSettings = Object.assign(
+		destinationSettings = Object.assign(
 			{},
 			destinationSettings,
 			sourceSettings,
 		);
 
 	}
-	await writeFile(
+	await writeJson(
 		destinationFile,
-		JSON.stringify(mergedSettings, null, 2),
-		{ encoding: "utf8" }
+		destinationSettings
 	);
 
+}
+
+interface ExtensionsObject {
+	recommendations: string[];
+}
+
+async function mergeExtensions(sourceExtensions: ExtensionsObject, destinationFile: string) {
+	let log = vscode.window.createOutputChannel("MergeSettings");
+
+	let destinationSettings: SettingsObject = await readJson(destinationFile);
+
+	const isWorkspaceFile = destinationFile.endsWith(".code-workspace");
+
+	if (isWorkspaceFile) {
+		let recommendations: string[] = destinationSettings?.extensions?.recommendations || [];
+		recommendations = recommendations.concat(sourceExtensions?.recommendations || []);
+		destinationSettings.extensions = { recommendations };
+
+	} else {
+		let recommendations: string[] = destinationSettings?.recommendations || [];
+		recommendations = recommendations.concat(sourceExtensions?.recommendations || []);
+		destinationSettings = { recommendations };
+
+	}
+	await writeJson(destinationFile, destinationSettings);
+
+}
+
+async function readJson(path: string): Promise<SettingsObject> {
+	let content = await readFile(
+		path,
+		{
+			encoding: "utf8",
+		}
+	);
+
+	return parseJson(content);
+}
+
+function parseJson(content: string): SettingsObject {
+	const errors: ParseError[] = [];
+	const json = parse(
+		content,
+		errors,
+		{
+			allowTrailingComma: true,
+		}
+	);
+	if (errors.length > 0) {
+		throw new Error(
+			"Failed to parse settings.json. Please make sure it contains correct JSON content."
+		);
+	}
+
+	return json;
+}
+
+
+async function writeJson(path: string, json: any) {
+	await writeFile(
+		path,
+		JSON.stringify(json, null, 2),
+		{ encoding: "utf8" }
+	);
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -88,57 +121,71 @@ export function activate(context: vscode.ExtensionContext) {
 			.getConfiguration("mergeSettings")
 			.get("workspaceFolderSettingsFile") || "";
 
+		const workspaceFolderExtensionsFile: string = vscode.workspace
+			.getConfiguration("mergeSettings")
+			.get("workspaceFolderExtensionsFile") || "";
+
 		const useWorkspaceFolders = vscode.workspace.getConfiguration("mergeSettings").get("useWorkspaceFolders");
 
 		const sourceSettingsFiles: string = vscode.workspace.getConfiguration("mergeSettings").get("sourceSettingsFiles") || "";
+		const sourceExtensionsFiles: string = vscode.workspace.getConfiguration("mergeSettings").get("sourceExtensionsFiles") || "";
 
 		const workspaceFile = vscode.workspace.workspaceFile;
-		if (!workspaceFile) {
-			log.appendLine("No workspace file found, so we do not known where to write the merged settings.");
-			return;
-		}
-
-
-		if (useWorkspaceFolders) {
-			if (!vscode.workspace.workspaceFolders) {
-				log.appendLine("No workspace folders found, so we do not know where to read the merged settings.");
-			} else {
-				vscode.workspace.workspaceFolders.map(async (folder) => {
-					const defaultSettingsFileLocation = path.resolve(
-						folder.uri.fsPath,
-						workspaceFolderSettingsFile
-					);
-					const defaultSettingsContent = await readFile(
-						defaultSettingsFileLocation,
-						{
-							encoding: "utf8",
-						}
-					);
-
-					mergeSettings(defaultSettingsContent, workspaceFile.fsPath);
-					log.appendLine(`Merged settings from ${defaultSettingsFileLocation}`);
-					areSettingsSynced = true;
-				});
-
-			}
-			sourceSettingsFiles.split('\n').map(async (sourceSettingsFile) => {
-				let sourceSettingsContent: string;
-
-				if (sourceSettingsFile.startsWith("http://") || sourceSettingsFile.startsWith("https://")) {
-					sourceSettingsContent = await fetch(sourceSettingsFile).then(res => res.text());
-
+		if (workspaceFile) {
+			if (useWorkspaceFolders) {
+				if (!vscode.workspace.workspaceFolders) {
+					log.appendLine("No workspace folders found, so there are no settings to read.");
 				} else {
-					sourceSettingsContent = await readFile(sourceSettingsFile, {
-						encoding: "utf8",
+					vscode.workspace.workspaceFolders.map(async (folder) => {
+						const defaultSettingsFileLocation = path.resolve(
+							folder.uri.fsPath,
+							workspaceFolderSettingsFile
+						);
+						const defaultSettings = await readJson(
+							defaultSettingsFileLocation,
+						);
+
+						mergeSettings(defaultSettings, workspaceFile.fsPath);
+
+						const defaultExtensionsFileLocation = path.resolve(
+							folder.uri.fsPath,
+							workspaceFolderExtensionsFile
+						);
+						const defaultExtensions = (await readJson(
+							defaultExtensionsFileLocation,
+						))?.extensions || { recommendations: [] };
+
+						mergeExtensions(defaultExtensions, workspaceFile.fsPath);
+
 					});
 
 				}
+			}
+		} else {
+			const defaultSettings = await readJson(
+				workspaceFolderSettingsFile, // use separate (ie folderSettingsFile)
+			);
 
-				mergeSettings(sourceSettingsContent, workspaceFile.fsPath);
-				log.appendLine(`Merged settings from ${sourceSettingsFile}`);
-				areSettingsSynced = true;
-			});
+			mergeSettings(defaultSettings, ".vscode/settings.json");
+
+			const defaultExtensions = (await readJson(
+				workspaceFolderExtensionsFile, // use separate (ie folderExtensionsFile)
+			)) || { recommendations: [] };
+
+			mergeExtensions(defaultExtensions, ".vscode/extensions.json");
 		}
+		sourceSettingsFiles.split('\n').map(async (sourceSettingsFile) => {
+			let sourceSettings: SettingsObject;
+
+			if (sourceSettingsFile.startsWith("http://") || sourceSettingsFile.startsWith("https://")) {
+				sourceSettings = parseJson(await fetch(sourceSettingsFile).then(res => res.text()));
+
+			} else {
+				sourceSettings = await readJson(sourceSettingsFile);
+			}
+
+			mergeSettings(sourceSettings, workspaceFile.fsPath);
+		});
 
 		vscode.window.showInformationMessage("Workspace Settings Synchronized");
 	});

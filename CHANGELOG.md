@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.2.0]
+
+- Merge extensions also
+
 ## [0.1.3]
 
 - Fix merge issue in code-workspace file

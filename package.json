@@ -11,7 +11,7 @@
     "url": "https://github.com/mrijken/merge-settings/issues"
   },
   "license": "MIT",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -38,13 +38,24 @@
         "mergeSettings.workspaceFolderSettingsFile": {
           "type": "string",
           "default": ".vscode/settings.default.json",
-          "description": "The file to load the settings from in your workspace folders if `useWorkspaceFolders` is enabled"
+          "description": "The file to merge the settings in your workspace folders if `useWorkspaceFolders` is enabled"
+        },
+        "mergeSettings.workspaceFolderExtensionsFile": {
+          "type": "string",
+          "default": ".vscode/extensions.default.json",
+          "description": "The file to merge the extensions in your workspace folders if `useWorkspaceFolders` is enabled"
         },
         "mergeSettings.sourceSettingsFiles": {
           "type": "string",
           "default": "",
           "editPresentation": "multilineText",
           "description": "A list of files to load default settings from. A file can be a path on the local file system, or a URL."
+        },
+        "mergeSettings.sourceExtensionsFiles": {
+          "type": "string",
+          "default": "",
+          "editPresentation": "multilineText",
+          "description": "A list of files to load default extensions. A file can be a path on the local file system, or a URL."
         }
       }
     }
